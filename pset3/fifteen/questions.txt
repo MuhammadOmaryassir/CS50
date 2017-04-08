@@ -1,0 +1,4 @@
+0. from Min * Min to Max * Max  where Min = 3 , Max = 9
+1. 2D Arrays
+2. greet()
+3. init() , draw() , move() and won()
