@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Withdraw
+{% endblock %}
+
+{% block main %}
+<div class="quote">
+    <form action="{{ url_for('withdraw') }}" method="POST">
+        <fieldset>
+            <div class="form-group">
+                <input autocomplete="off" autofocus class="form-control" name="amount" placeholder="How Much Mony Do You Need" type="text"/>
+            </div>
+            <div class="form-group">
+                <button class="btn btn-default" type="submit">Withdraw</button>
+            </div>
+        </fieldset>
+    </form>
+</div>
+{% endblock %}
