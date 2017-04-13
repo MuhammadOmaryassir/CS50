@@ -264,11 +264,12 @@ def register():
 def sell():
     """Sell shares of stock."""
     # if user reached route via POST
-    if request.method == "POST":
-       
+    if request.method == "GET":
+        return render_template("sell.html")
+    else:
         # ensure proper symbol
-        stock = lookup(request.form.get("symbol"))
-        if not stock:
+        search = lookup(request.form.get("symbol"))
+        if not search:
             return apology("Invalid Symbol")
         
         # ensure proper number of shares
@@ -278,80 +279,61 @@ def sell():
                 return apology("Shares must be positive integer")
         except:
             return apology("Shares must be positive integer")
-            
+        
         # select user's shares
-        Shares = db.execute("SELECT shares FROM Portfolios WHERE id = :id",id=session["user_id"])
+        UserS = db.execute("SELECT shares FROM Portfolios WHERE id = :id AND symbol=:symbol",\
+        id=session["user_id"], symbol=search["symbol"])
         
-        # check if enough shares to sel to buy
-        if not Shares or int(Shares[0]["shares"]) < shares:
-            return apology("You dont have this share to see!!")
-            
-        #update user's cash    
-        db.execute("UPDATE users SET cash = cash + :purchase WHERE id = :id", \
-                    id=session["user_id"], \
-                    purchase=stock["price"] * float(shares))
-                    
-         
+        # check if enough shares to sell
+        if not UserS or int(UserS[0]["shares"]) < shares:
+            return apology("You Don't Own This share to sell")
+        
         # update history
-        db.execute("INSERT INTO History (symbol, shares, price, id) \
-                    VALUES(:symbol, :shares, :price, :id)", \
-                    symbol=stock["symbol"], shares =- shares, \
-                    price=usd(stock["price"]), id=session["user_id"])
-                    
-        #calculate the currnt amont of shares            
-        TotalShares= Shares[0]["shares"] - shares  
-        
-        #update the Total cost
-        TotalCost = usd(TotalShares * stock["price"])
-        
-        #chech if the user dosn't have share to sell
-        #Delete the share from the portofolio table
-        if TotalShares == 0:
-            db.execute("DELETE FROM Portfolios WHERE id=:id AND symbol=:symbol", \
-            id=session["user_id"],symbol=stock["symbol"])
-        
-        else:
-            
-            
-            db.execute("UPDATE Portfolios SET shares=:shares WHERE id=:id AND symbol=:symbol", \
-                        shares=TotalShares, id=session["user_id"], \
-                        symbol=stock["symbol"])
+        db.execute("INSERT INTO History (symbol, shares, price, id) VALUES(:symbol, :shares, :price, :id)", \
+        symbol=search["symbol"], shares=-shares,price=usd(search["price"]), id=session["user_id"])
+                       
+        # update user's cahs          
+        db.execute("UPDATE users SET cash = cash + :purchase WHERE id = :id",id=session["user_id"],purchase=search["price"] * float(shares))
                         
-            db.execute("UPDATE Portfolios SET total=:total WHERE id=:id AND symbol=:symbol",\
-            total=TotalCost, id=session["user_id"], symbol=stock["symbol"])
+        # calculate total shares
+        TOTALSHARES = UserS[0]["shares"] - shares
+        #calculate total cost
+        TotalCosts = usd(TOTALSHARES * search["price"])
+        
+        # if  there is no shares of a specific stock
+        if TOTALSHARES == 0:
+            db.execute("DELETE FROM Portfolios WHERE id=:id AND symbol=:symbol",id=session["user_id"],symbol=search["symbol"])
+        # else, update portfolio 
+        else:
+            db.execute("UPDATE Portfolios SET shares=:shares WHERE id=:id AND symbol=:symbol",\
+            shares=TOTALSHARES, id=session["user_id"],symbol=search["symbol"])
             
+            db.execute("UPDATE Portfolios SET total=:total WHERE id=:id AND symbol=:symbol",\
+            total=TotalCosts, id=session["user_id"], symbol=search["symbol"])
+        
         # return to index
         return redirect(url_for("index"))
-        
-    else:
-        return render_template("sell.html")
-        
-        
+
+    
+    
+    
 @app.route("/withdraw", methods=["GET","POST"])
 @login_required
 def withdraw():
     """withdraw From The Bank"""
     # if user reached route via POST 
     if request.method == "POST":
-        
-        try:
-            withdraw = int(request.form.get("amount"))
-        
-            #couple if checks
-            if withdraw <= 0:
-                apology("You can't withdraw that amount")
-            elif withdraw > 2000:
-                apology("You can't withdraw More than 2000$ at once")
-        except:
-            apology("You can't withdraw that amount")    
+        withdraw = request.form.get("amount")
+        check = float(request.form.get("amount"))
+        if check < 0:
+            return apology("You Can't withdraw This Amount")
+        else:
+            #update user's cash
+            db.execute("UPDATE users SET cash = cash + :withdraw WHERE id = :id", \
+            withdraw=withdraw,id=session["user_id"])
         
         
-        #update user's cash
-        db.execute("UPDATE users SET cash = cash + :withdraw WHERE id = :id", \
-        withdraw=withdraw,id=session["user_id"])
-        
-        
-        return redirect(url_for("index"))
+            return redirect(url_for("index"))
         
     else:    
         return render_template("withdraw.html")
